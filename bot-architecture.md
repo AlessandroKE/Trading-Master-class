@@ -171,7 +171,7 @@ brings it to ~$10–20/mo.
 ## Build phases
 1. ✅ **P1 — Data + indicators:** ccxt (Bybit) top-20 fetch, multi-TF OHLCV, funding/OI, pure-pandas indicators. CLI output. **Done.**
 2. ✅ **P2 — Structure + quality filter:** swing/trend/BOS-CHoCH/S-R detection + §15 scoring + NO-TRADE gate + READY/WATCH split. **Done.**
-3. **P3 — Rule-based synthesis + delivery:** templated report (system-prompt.md format), twice-daily Telegram.
+3. ✅ **P3 — Rule-based synthesis + delivery:** regime + templated report (system-prompt.md format), Telegram via Bot API, cron/Task-Scheduler twice-daily. **Done.**
 4. **P4 — Live layer (Mode B):** websocket event loop + intraday alerts + dedup/cooldown.
 5. **P5 — Journal:** SQLite journal + behavioral analysis (§22). *Good candidate for adding Claude API here.*
 

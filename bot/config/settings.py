@@ -43,6 +43,16 @@ EXCHANGE_KEYS: dict[str, dict[str, str | None]] = {
 # --- Storage ---
 DB_PATH: str = os.getenv("DB_PATH", "data/trader.db")
 
+# --- Delivery (Telegram) ---
+TELEGRAM_BOT_TOKEN: str | None = os.getenv("TELEGRAM_BOT_TOKEN") or None
+TELEGRAM_CHAT_ID: str | None = os.getenv("TELEGRAM_CHAT_ID") or None
+
+# Session label auto-picked from UTC hour if not provided (morning/evening report).
+def session_label() -> str:
+    from datetime import datetime, timezone
+    hour = datetime.now(timezone.utc).hour
+    return "MORNING" if hour < 12 else "EVENING"
+
 # --- Data source for market-cap ranking (free, no key) ---
 COINGECKO_MARKETS_URL: str = (
     "https://api.coingecko.com/api/v3/coins/markets"

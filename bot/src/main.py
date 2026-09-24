@@ -16,8 +16,10 @@ from config import settings
 from src.analysis import scoring, structure
 from src.data.exchange import ExchangeClient
 from src.data.universe import get_top_symbols, to_perp_symbol
+from src.delivery import telegram
 from src.indicators import ta
 from src.models.types import Derivatives, MarketSnapshot, TimeframeView
+from src.report import builder
 from src.storage import db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -171,6 +173,16 @@ def main() -> None:
         len(universe), datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")))
     print(tabulate(rows, headers=headers, tablefmt="github"))
     print_setups(snaps)
+
+    # --- P3: synthesize the daily report and deliver ---
+    report = builder.build_report(snaps, session=settings.session_label())
+    print("\n" + "#" * 70)
+    print(report)
+    if telegram.is_configured():
+        sent = telegram.send(report)
+        log.info("Telegram delivery: %s", "sent" if sent else "FAILED")
+    else:
+        log.info("Telegram not configured - report printed to console only.")
 
 
 if __name__ == "__main__":

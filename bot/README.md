@@ -6,10 +6,28 @@ API keys are read-only.
 
 See `../bot-architecture.md` for the full plan and `../system-prompt.md` for the analyst logic.
 
-## Phase 1 (this scaffold)
-Fetches the current **top-20 by market cap** (CoinGecko, free), pulls **multi-timeframe OHLCV +
-funding + open interest** from **Bybit** (Binance fallback) via `ccxt`, computes indicators, and
-prints a scan table to the console. No structure detection or delivery yet — that's P2/P3.
+## Status: P1 + P2 + P3 done
+- **P1** — top-20 by market cap (CoinGecko), multi-timeframe OHLCV + funding + OI from Bybit
+  (Binance fallback) via `ccxt`, indicators.
+- **P2** — market-structure detection (swings, trend, BOS/CHoCH, S/R), §15 quality scoring,
+  NO-TRADE gate, READY vs WATCH split.
+- **P3** — rule-based daily-report synthesis (system-prompt.md format) + Telegram delivery.
+
+Running `python -m src.main` now prints a full **CRYPTO MARKET REPORT** and, if Telegram is
+configured, sends it to your chat.
+
+## Scheduling (twice daily)
+`main` runs one scan+report and exits. Trigger it morning and evening:
+
+- **Linux/VPS (cron):**
+  ```
+  0 7,19 * * *  cd /path/to/bot && /path/to/.venv/bin/python -m src.main >> logs/run.log 2>&1
+  ```
+  or with Docker: `0 7,19 * * *  cd /path/to/bot && docker compose run --rm bot`
+- **Windows (Task Scheduler):** create a Daily task with two triggers (07:00, 19:00) running
+  `python -m src.main` in the `bot` dir.
+
+The report auto-labels MORNING (UTC < 12:00) or EVENING.
 
 ## Quick start (local)
 
