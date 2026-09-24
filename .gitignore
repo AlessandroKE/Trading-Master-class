@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Env & secrets
+.env
+*.env
+!*.env.example
+
+# Data / DB (SQLite lives on a mounted volume, not in git)
+bot/data/*.db
+bot/data/*.sqlite
+bot/data/*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

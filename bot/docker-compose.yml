@@ -1,0 +1,33 @@
+# Docker Compose for the trader-helper bot.
+#
+# v1 DB = SQLite (chosen in bot-architecture.md): the file lives in the ./data volume so it
+# survives container restarts — no separate DB service needed. The `postgres` service below
+# is COMMENTED OUT and reserved for when a UI / concurrent access arrives (see notes).
+
+services:
+  bot:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data        # SQLite file persists here
+    # P1 runs once and exits. For scheduled runs on a host, use cron to
+    # `docker compose run --rm bot`. P4 will make this a long-running service with restart.
+    restart: "no"
+
+  # --- FUTURE (P-later): uncomment when adding a UI / multi-process access ---
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: trader
+  #     POSTGRES_PASSWORD: change_me
+  #     POSTGRES_DB: trader
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #
+  # (then point DB_PATH/DB_URL at postgres and swap src/storage/db.py to a Postgres driver)
+
+# volumes:
+#   pgdata:
