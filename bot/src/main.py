@@ -7,11 +7,13 @@ No structure detection, scoring, or delivery yet (that's P2/P3)."""
 from __future__ import annotations
 
 import logging
+import sys
 from datetime import datetime, timezone
 
 from tabulate import tabulate
 
 from config import settings
+from src.analysis import scoring, structure
 from src.data.exchange import ExchangeClient
 from src.data.universe import get_top_symbols, to_perp_symbol
 from src.indicators import ta
@@ -42,6 +44,9 @@ def scan_symbol(client: ExchangeClient, coin: dict) -> MarketSnapshot:
         df = ta.to_dataframe(ohlcv)
         view = TimeframeView(timeframe=tf, last_close=float(df["close"].iloc[-1]))
         view.indicators = ta.compute(df)
+        # Structure detection on HTF + intermediate only (per multi-timeframe model)
+        if tf in ("1d", "4h"):
+            view.structure = structure.analyze(df, tf)
         snap.timeframes[tf] = view
 
     # Price from the fastest timeframe we got
@@ -62,6 +67,7 @@ def scan_symbol(client: ExchangeClient, coin: dict) -> MarketSnapshot:
         oi_notional_usd=oi_val,
         source=fex or oiex,
     )
+    scoring.evaluate(snap)   # P2: bias + quality score + candidate setup (NO-TRADE gate)
     return snap
 
 
@@ -76,23 +82,64 @@ def build_row(snap: MarketSnapshot) -> list:
 
     rsi_1d = d1.indicators.rsi14 if d1 else None
     funding = snap.derivatives.funding_rate
+    struct_1d = d1.structure.trend if (d1 and d1.structure) else "-"
     return [
         snap.market_cap_rank if snap.market_cap_rank is not None else "?",
         snap.base,
         f"{snap.price:,.4g}" if snap.price else "-",
         f"{snap.change_24h_pct:+.1f}%" if snap.change_24h_pct is not None else "-",
-        trend(d1),
+        struct_1d,
         trend(h4),
         f"{rsi_1d:.0f}" if rsi_1d is not None else "-",
         f"{funding*100:.4f}%" if funding is not None else "-",
         f"{snap.derivatives.oi_notional_usd/1e6:,.0f}M"
         if snap.derivatives.oi_notional_usd else "-",
-        snap.exchange or "-",
-        ",".join(snap.errors) if snap.errors else "",
+        snap.bias,
+        f"{snap.score} {snap.classification}",
     ]
 
 
+def _print_idea(s: MarketSnapshot) -> None:
+    u = s.setup
+    dist = f"{u.distance_pct:+.1f}% to entry" if u.status == "watch" else "AT ENTRY"
+    print(f"\n{s.base}/USDT  -  {u.direction}  [{u.confidence}, score {s.score}]  "
+          f"({u.setup_type})  | {dist}")
+    print(f"  Entry {u.entry_low:,.4g}–{u.entry_high:,.4g} | Stop {u.stop:,.4g} | "
+          f"TP1 {u.tp1:,.4g} / TP2 {u.tp2:,.4g} / TP3 {u.tp3:,.4g} | R:R {u.rr}")
+    print(f"  Why: {'; '.join(u.reasons)}")
+    print(f"  Main risk: {u.main_risk}")
+
+
+def print_setups(snaps: list[MarketSnapshot]) -> None:
+    """Split gate-passing ideas into READY (price at entry) vs WATCH (wait for level)."""
+    ideas = [s for s in snaps if s.setup is not None]
+    ideas.sort(key=lambda s: s.score, reverse=True)
+    ready = [s for s in ideas if s.setup.status == "ready"]
+    watch = [s for s in ideas if s.setup.status == "watch"]
+
+    print("\n=== [ACTIONABLE SETUPS] price at/near entry, gate passed ===")
+    if not ready:
+        print("NO ACTIONABLE SETUP RIGHT NOW - nothing is at a tradeable entry. WAIT.")
+    else:
+        for s in ready:
+            _print_idea(s)
+
+    if watch:
+        print("\n=== [WATCHLIST] structurally aligned, waiting for price to reach entry ===")
+        for s in watch:
+            _print_idea(s)
+
+    print("\n! Candidates from structure + derivatives only. News/macro/BTC-correlation "
+          "checks come in later phases. Confirm before entry.")
+
+
 def main() -> None:
+    # Make console output robust on Windows (cp1252) terminals.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:  # noqa: BLE001
+        pass
+
     db.init_db()
     client = ExchangeClient()
 
@@ -108,20 +155,22 @@ def main() -> None:
              len(universe))
 
     rows = []
+    snaps: list[MarketSnapshot] = []
     for coin in universe:
         try:
             snap = scan_symbol(client, coin)
             db.save_snapshot(snap)
+            snaps.append(snap)
             rows.append(build_row(snap))
         except Exception as exc:  # noqa: BLE001
             log.warning("scan failed for %s: %s", coin.get("base"), exc)
 
-    headers = ["#", "Coin", "Price", "24h", "1D", "4H", "RSI(1D)",
-               "Funding", "OI", "Src", "Errors"]
+    headers = ["#", "Coin", "Price", "24h", "1D Struct", "4H", "RSI(1D)",
+               "Funding", "OI", "Bias", "Score"]
     print("\n=== TOP-%d SCAN  (%s UTC) ===" % (
         len(universe), datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")))
     print(tabulate(rows, headers=headers, tablefmt="github"))
-    print("\nNote: P1 output is raw data only — no setups/scoring yet (that's P2/P3).")
+    print_setups(snaps)
 
 
 if __name__ == "__main__":
