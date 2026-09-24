@@ -6,7 +6,7 @@ API keys are read-only.
 
 See `../bot-architecture.md` for the full plan and `../system-prompt.md` for the analyst logic.
 
-## Status: P1–P4 done
+## Status: P1–P5 done (core build complete)
 - **P1** — top-20 by market cap (CoinGecko), multi-timeframe OHLCV + funding + OI from Bybit
   (Binance fallback) via `ccxt`, indicators.
 - **P2** — market-structure detection (swings, trend, BOS/CHoCH, S/R), §15 quality scoring,
@@ -15,6 +15,17 @@ See `../bot-architecture.md` for the full plan and `../system-prompt.md` for the
 - **P4** — live monitor (Mode B): polling loop with intraday alerts (entry reached,
   invalidation, level break, 1h BOS/CHoCH, volatility, funding extreme) + dedup/cooldown;
   also fires the scheduled report at REPORT_HOURS.
+- **P5** — trade journal + behavioral analysis (§22): log trades, then flag overtrading,
+  revenge trading, excessive leverage, over-risking, win/loss R asymmetry, repeated mistakes.
+
+## Trade journal (§22)
+```bash
+python -m src.journal add --asset BTC --dir LONG --entry 83000 --stop 81000 \
+    --exit 88000 --size 200 --lev 3 --risk 1 --result win --setup "support bounce"
+python -m src.journal list
+python -m src.journal analyze [--send]     # behavioral analysis (--send to Telegram)
+```
+R-multiple is derived from entry/stop/exit automatically.
 
 ## Two ways to run
 - **One-shot report** (cron-friendly): `python -m src.main` — prints the full

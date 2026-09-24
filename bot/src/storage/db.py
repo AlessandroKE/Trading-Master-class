@@ -62,9 +62,18 @@ def init_db() -> None:
     conn = connect()
     try:
         conn.executescript(SCHEMA)
+        _migrate(conn)
         conn.commit()
     finally:
         conn.close()
+
+
+def _migrate(conn) -> None:
+    """Add columns introduced after initial release (SQLite has no IF NOT EXISTS for columns)."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(journal)").fetchall()}
+    for name, ddl in (("exit_price", "REAL"), ("r_multiple", "REAL")):
+        if name not in cols:
+            conn.execute(f"ALTER TABLE journal ADD COLUMN {name} {ddl}")
 
 
 def save_snapshot(snap) -> None:

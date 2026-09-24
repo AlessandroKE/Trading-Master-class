@@ -173,7 +173,9 @@ brings it to ~$10–20/mo.
 2. ✅ **P2 — Structure + quality filter:** swing/trend/BOS-CHoCH/S-R detection + §15 scoring + NO-TRADE gate + READY/WATCH split. **Done.**
 3. ✅ **P3 — Rule-based synthesis + delivery:** regime + templated report (system-prompt.md format), Telegram via Bot API, cron/Task-Scheduler twice-daily. **Done.**
 4. ✅ **P4 — Live layer (Mode B):** polling monitor with intraday alerts (entry/invalidation/level-break/1h BOS-CHoCH/volatility/funding) + SQLite dedup-cooldown; scheduled reports at REPORT_HOURS; Docker default. Websockets = future optimization. **Done.**
-5. **P5 — Journal:** SQLite journal + behavioral analysis (§22). *Good candidate for adding Claude API here.*
+5. ✅ **P5 — Journal:** SQLite journal (`python -m src.journal add/list/analyze`) + rule-based §22 behavioral analysis (overtrading, revenge, leverage, over-risking, R asymmetry, repeated mistakes). Claude hook documented for later. **Done.**
+
+**Core build (P1–P5) complete.** Future/optional: websocket upgrade for P4, Claude API for journal narration, FastAPI+React UI (see UI section).
 
 ---
 
