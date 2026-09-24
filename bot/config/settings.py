@@ -53,6 +53,24 @@ def session_label() -> str:
     hour = datetime.now(timezone.utc).hour
     return "MORNING" if hour < 12 else "EVENING"
 
+
+# --- Live monitor (P4 / Mode B) ---
+MONITOR_INTERVAL_SEC: int = int(os.getenv("MONITOR_INTERVAL_SEC", "120"))
+MONITOR_MAX_COINS: int = int(os.getenv("MONITOR_MAX_COINS", "8"))   # focused watch set
+RESCAN_EVERY_SEC: int = int(os.getenv("RESCAN_EVERY_SEC", "3600"))  # refresh levels/setups
+REPORT_HOURS: list[int] = [7, 19]                                   # UTC hours for reports
+
+# Alert thresholds
+ALERT_MOVE_PCT: float = float(os.getenv("ALERT_MOVE_PCT", "1.5"))   # per-cycle price jump
+ALERT_FUNDING_ABS: float = float(os.getenv("ALERT_FUNDING_ABS", "0.0005"))  # crowded
+LEVEL_BREAK_BUF_PCT: float = float(os.getenv("LEVEL_BREAK_BUF_PCT", "0.15"))
+
+# Cooldown (seconds) per alert type to avoid spam
+ALERT_COOLDOWN_SEC: dict[str, int] = {
+    "ENTRY": 1800, "INVALIDATION": 3600, "LEVEL_BREAK": 1800,
+    "STRUCTURE": 1800, "VOLATILITY": 900, "FUNDING": 3600,
+}
+
 # --- Data source for market-cap ranking (free, no key) ---
 COINGECKO_MARKETS_URL: str = (
     "https://api.coingecko.com/api/v3/coins/markets"

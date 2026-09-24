@@ -11,9 +11,10 @@ services:
       - .env
     volumes:
       - ./data:/app/data        # SQLite file persists here
-    # P1 runs once and exits. For scheduled runs on a host, use cron to
-    # `docker compose run --rm bot`. P4 will make this a long-running service with restart.
-    restart: "no"
+    # Mode B (P4): the container runs the always-on live monitor (see Dockerfile CMD),
+    # which also sends the full report at REPORT_HOURS. Restart on failure/reboot.
+    # One-shot report: `docker compose run --rm bot python -m src.main`
+    restart: unless-stopped
 
   # --- FUTURE (P-later): uncomment when adding a UI / multi-process access ---
   # postgres:

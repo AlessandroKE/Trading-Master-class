@@ -22,5 +22,6 @@ RUN mkdir -p /app/data
 RUN useradd --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 
-# P1: run one scan and exit. (P3+ will switch to a long-running scheduler/loop.)
-CMD ["python", "-m", "src.main"]
+# Mode B (P4): run the always-on live monitor (reports at REPORT_HOURS + intraday alerts).
+# One-shot report instead: `docker compose run --rm bot python -m src.main`
+CMD ["python", "-m", "src.monitor.engine"]

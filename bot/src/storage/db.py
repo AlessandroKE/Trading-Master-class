@@ -43,6 +43,11 @@ CREATE TABLE IF NOT EXISTS journal (
     mistake     TEXT,
     notes       TEXT
 );
+
+CREATE TABLE IF NOT EXISTS alerts_fired (
+    key         TEXT PRIMARY KEY,  -- e.g. "BTC:LEVEL_BREAK:83000"
+    ts          TEXT NOT NULL
+);
 """
 
 

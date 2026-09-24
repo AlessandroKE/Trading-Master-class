@@ -135,54 +135,78 @@ def print_setups(snaps: list[MarketSnapshot]) -> None:
           "checks come in later phases. Confirm before entry.")
 
 
-def main() -> None:
-    # Make console output robust on Windows (cp1252) terminals.
+def safe_stdout() -> None:
+    """Make console output robust on Windows (cp1252) terminals."""
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except Exception:  # noqa: BLE001
         pass
 
-    db.init_db()
-    client = ExchangeClient()
 
+def resolve_universe(client: ExchangeClient) -> list[dict]:
+    """Top-cap coins that actually have a perp market, capped at TOP_N."""
     candidates = get_top_symbols()
-    # Keep only top-cap coins that actually have a perp market; take TOP_N of those.
     universe = []
     for coin in candidates:
         if client.has_perp(to_perp_symbol(coin["base"])):
             universe.append(coin)
         if len(universe) >= settings.TOP_N:
             break
-    log.info("Universe: %d coins (top by market cap w/ perp market, stables excluded)",
-             len(universe))
+    return universe
 
-    rows = []
+
+def run_scan(client: ExchangeClient, universe: list[dict] | None = None,
+             persist: bool = True) -> list[MarketSnapshot]:
+    """Full multi-timeframe scan + analysis for the universe. Reusable by main & monitor."""
+    if universe is None:
+        universe = resolve_universe(client)
     snaps: list[MarketSnapshot] = []
     for coin in universe:
         try:
             snap = scan_symbol(client, coin)
-            db.save_snapshot(snap)
+            if persist:
+                db.save_snapshot(snap)
             snaps.append(snap)
-            rows.append(build_row(snap))
         except Exception as exc:  # noqa: BLE001
             log.warning("scan failed for %s: %s", coin.get("base"), exc)
+    return snaps
 
+
+def print_scan_table(snaps: list[MarketSnapshot]) -> None:
     headers = ["#", "Coin", "Price", "24h", "1D Struct", "4H", "RSI(1D)",
                "Funding", "OI", "Bias", "Score"]
+    rows = [build_row(s) for s in snaps]
     print("\n=== TOP-%d SCAN  (%s UTC) ===" % (
-        len(universe), datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")))
+        len(snaps), datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")))
     print(tabulate(rows, headers=headers, tablefmt="github"))
-    print_setups(snaps)
 
-    # --- P3: synthesize the daily report and deliver ---
-    report = builder.build_report(snaps, session=settings.session_label())
-    print("\n" + "#" * 70)
-    print(report)
+
+def deliver_report(snaps: list[MarketSnapshot], session: str | None = None,
+                   to_console: bool = True) -> str:
+    """Build the daily report, print it (optional), and send to Telegram if configured."""
+    report = builder.build_report(snaps, session=session or settings.session_label())
+    if to_console:
+        print("\n" + "#" * 70)
+        print(report)
     if telegram.is_configured():
         sent = telegram.send(report)
         log.info("Telegram delivery: %s", "sent" if sent else "FAILED")
     else:
         log.info("Telegram not configured - report printed to console only.")
+    return report
+
+
+def main() -> None:
+    safe_stdout()
+    db.init_db()
+    client = ExchangeClient()
+    universe = resolve_universe(client)
+    log.info("Universe: %d coins (top by market cap w/ perp market, stables excluded)",
+             len(universe))
+    snaps = run_scan(client, universe)
+    print_scan_table(snaps)
+    print_setups(snaps)
+    deliver_report(snaps)
 
 
 if __name__ == "__main__":

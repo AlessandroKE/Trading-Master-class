@@ -6,28 +6,35 @@ API keys are read-only.
 
 See `../bot-architecture.md` for the full plan and `../system-prompt.md` for the analyst logic.
 
-## Status: P1 + P2 + P3 done
+## Status: P1–P4 done
 - **P1** — top-20 by market cap (CoinGecko), multi-timeframe OHLCV + funding + OI from Bybit
   (Binance fallback) via `ccxt`, indicators.
 - **P2** — market-structure detection (swings, trend, BOS/CHoCH, S/R), §15 quality scoring,
   NO-TRADE gate, READY vs WATCH split.
 - **P3** — rule-based daily-report synthesis (system-prompt.md format) + Telegram delivery.
+- **P4** — live monitor (Mode B): polling loop with intraday alerts (entry reached,
+  invalidation, level break, 1h BOS/CHoCH, volatility, funding extreme) + dedup/cooldown;
+  also fires the scheduled report at REPORT_HOURS.
 
-Running `python -m src.main` now prints a full **CRYPTO MARKET REPORT** and, if Telegram is
-configured, sends it to your chat.
+## Two ways to run
+- **One-shot report** (cron-friendly): `python -m src.main` — prints the full
+  **CRYPTO MARKET REPORT** and sends it if Telegram is configured, then exits.
+- **Always-on monitor** (Mode B): `python -m src.monitor.engine` — sends an initial report,
+  then polls a focused watch set every `MONITOR_INTERVAL_SEC` for intraday alerts and sends
+  the full report at `REPORT_HOURS` (07:00 & 19:00 UTC). This is the Docker default.
 
-## Scheduling (twice daily)
-`main` runs one scan+report and exits. Trigger it morning and evening:
-
-- **Linux/VPS (cron):**
-  ```
-  0 7,19 * * *  cd /path/to/bot && /path/to/.venv/bin/python -m src.main >> logs/run.log 2>&1
-  ```
-  or with Docker: `0 7,19 * * *  cd /path/to/bot && docker compose run --rm bot`
-- **Windows (Task Scheduler):** create a Daily task with two triggers (07:00, 19:00) running
-  `python -m src.main` in the `bot` dir.
-
+## Deploy (Mode B, always-on)
+```bash
+cd bot && docker compose up -d --build      # runs the monitor, restarts on reboot
+```
 The report auto-labels MORNING (UTC < 12:00) or EVENING.
+
+### Alternative: cron one-shots (no always-on process)
+```
+0 7,19 * * *  cd /path/to/bot && /path/to/.venv/bin/python -m src.main >> logs/run.log 2>&1
+```
+Windows: a Task Scheduler daily task with two triggers (07:00, 19:00) running
+`python -m src.main` in the `bot` dir.
 
 ## Quick start (local)
 

@@ -172,7 +172,7 @@ brings it to ~$10–20/mo.
 1. ✅ **P1 — Data + indicators:** ccxt (Bybit) top-20 fetch, multi-TF OHLCV, funding/OI, pure-pandas indicators. CLI output. **Done.**
 2. ✅ **P2 — Structure + quality filter:** swing/trend/BOS-CHoCH/S-R detection + §15 scoring + NO-TRADE gate + READY/WATCH split. **Done.**
 3. ✅ **P3 — Rule-based synthesis + delivery:** regime + templated report (system-prompt.md format), Telegram via Bot API, cron/Task-Scheduler twice-daily. **Done.**
-4. **P4 — Live layer (Mode B):** websocket event loop + intraday alerts + dedup/cooldown.
+4. ✅ **P4 — Live layer (Mode B):** polling monitor with intraday alerts (entry/invalidation/level-break/1h BOS-CHoCH/volatility/funding) + SQLite dedup-cooldown; scheduled reports at REPORT_HOURS; Docker default. Websockets = future optimization. **Done.**
 5. **P5 — Journal:** SQLite journal + behavioral analysis (§22). *Good candidate for adding Claude API here.*
 
 ---
